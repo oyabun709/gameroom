@@ -9,10 +9,11 @@ type GameCardProps = {
 
 export function GameCard({ game, fullWidth = false }: GameCardProps) {
   const progressWidth = `${(game.stage / 18) * 100}%`;
+  const href = game.slug === "number-blast" ? "/number-blast" : `/games/${game.slug}`;
 
   return (
     <Link
-      href={`/games/${game.slug}`}
+      href={href}
       className="block transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5"
     >
       <article

@@ -21,6 +21,7 @@ export function generateStaticParams() {
 export default async function GamePage({ params }: GamePageProps) {
   const { slug } = await params;
   const game = gamesBySlug[slug];
+  const homeHref = slug === "number-blast" ? "/number-blast" : "/";
 
   if (!game) {
     notFound();
@@ -32,10 +33,10 @@ export default async function GamePage({ params }: GamePageProps) {
         <div className="flex items-center justify-between gap-4">
           <Wordmark />
           <Link
-            href="/"
+            href={homeHref}
             className="rounded-full border-[3px] border-gameroom-navy bg-gameroom-yellow px-4 py-3 text-xs leading-none text-gameroom-navy shadow-[3px_3px_0_var(--color-gameroom-navy)]"
           >
-            HOME
+            {slug === "number-blast" ? "PLAY" : "HOME"}
           </Link>
         </div>
       </header>
