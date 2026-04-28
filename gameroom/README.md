@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GAMEROOM
 
-## Getting Started
+Single-app TypeScript `Next.js 16` prototype for the GAMEROOM home screen and mini games.
 
-First, run the development server:
+## Scope
+
+- Home screen in `src/app/page.tsx`
+- Playable Number Blast in `src/app/number-blast/page.tsx`
+- Shared layout and UI pieces in `src/components/`
+- Shared game metadata in `src/lib/games.ts`
+
+Placeholder routes such as `progress`, `trophies`, and `games/[slug]` are kept because they are part of the current navigation flow and home-screen game links.
+
+## Tech
+
+- Next.js App Router
+- TypeScript only for app source
+- Tailwind CSS v4
+- No backend
+- No auth
+- No database
+
+## Local Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Validation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+npm run lint
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## App Structure
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```text
+src/
+  app/
+    games/[slug]/page.tsx
+    number-blast/page.tsx
+    page.tsx
+    progress/page.tsx
+    trophies/page.tsx
+  components/
+    bottom-nav.tsx
+    game-card.tsx
+    mascot-placeholder.tsx
+    number-blast-game.tsx
+    screen-shell.tsx
+    wordmark.tsx
+  lib/
+    games.ts
+```
