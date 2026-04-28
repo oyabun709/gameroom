@@ -1,0 +1,83 @@
+@import url("https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap");
+@import "tailwindcss";
+
+:root {
+  --background: #f7f0e6;
+  --foreground: #1a0a2e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-gameroom-cream: #f7f0e6;
+  --color-gameroom-navy: #1a0a2e;
+  --color-gameroom-orange: #ff6b00;
+  --color-gameroom-yellow: #ffe44d;
+  --color-gameroom-fox: #c4b5fd;
+  --color-gameroom-fox-shadow: #7c3aed;
+  --color-gameroom-number: #6ee7b7;
+  --color-gameroom-number-shadow: #047857;
+  --color-gameroom-bus: #fcd34d;
+  --color-gameroom-bus-shadow: #d97706;
+  --color-gameroom-story: #fda4af;
+  --color-gameroom-story-shadow: #be123c;
+  --color-gameroom-code: #7dd3fc;
+  --color-gameroom-code-shadow: #0369a1;
+  --font-sans: "Arial Black", Arial, Helvetica, sans-serif;
+  --font-mono: "Arial Black", Arial, Helvetica, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-gameroom-cream);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Arial Black", Arial, Helvetica, sans-serif;
+  text-transform: uppercase;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+}
+
+.font-wordmark {
+  font-family: "Fredoka One", "Arial Black", Arial, Helvetica, sans-serif;
+}
+
+.wordmark-shadow {
+  text-shadow: 3px 3px 0 var(--color-gameroom-navy);
+}
+
+.header-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 12px,
+    rgb(26 10 46 / 0.12) 12px 18px
+  );
+}
+
+.hard-border {
+  border: 3px solid var(--color-gameroom-navy);
+}
+
+.soft-copy {
+  color: rgb(26 10 46 / 0.72);
+}
+
+.screen-grid {
+  background-image:
+    linear-gradient(rgb(26 10 46 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(26 10 46 / 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
