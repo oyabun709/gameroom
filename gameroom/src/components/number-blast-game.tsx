@@ -1,12 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  BurstBadge,
+  CharacterPanel,
+  MissionArena,
+  MissionHeader,
+  MissionOverlay,
+} from "@/components/game-shell";
 
 type Question = {
   a: number;
   b: number;
   correct: number;
   choices: number[];
+  operator: "+" | "-";
 };
 
 type TargetState = {
@@ -20,10 +28,94 @@ type TargetState = {
 };
 
 type CosmoMood = "idle" | "celebrate" | "surprised";
-type Phase = "ready" | "playing";
+type Phase =
+  | "ready"
+  | "countdown"
+  | "playing"
+  | "planet-complete"
+  | "game-complete";
+
+type Planet = {
+  name: string;
+  color: string;
+  shadow: string;
+  fact: string;
+  fuelPerHit: number;
+  maxOperand: number;
+  allowSubtraction?: boolean;
+};
 
 const MIN_X = 0;
 const TARGET_COLORS = ["#ffe44d", "#7dd3fc", "#fcd34d"];
+const PLANETS: Planet[] = [
+  {
+    name: "MERCURY",
+    color: "#f5c27c",
+    shadow: "#b45309",
+    fact: "MERCURY IS THE CLOSEST PLANET TO THE SUN.",
+    fuelPerHit: 34,
+    maxOperand: 5,
+  },
+  {
+    name: "VENUS",
+    color: "#fda4af",
+    shadow: "#be123c",
+    fact: "VENUS HAS THICK CLOUDS ALL AROUND IT.",
+    fuelPerHit: 25,
+    maxOperand: 6,
+  },
+  {
+    name: "EARTH",
+    color: "#60a5fa",
+    shadow: "#1d4ed8",
+    fact: "EARTH IS THE ONLY PLANET WE KNOW WITH OCEANS FULL OF LIFE.",
+    fuelPerHit: 25,
+    maxOperand: 7,
+  },
+  {
+    name: "MARS",
+    color: "#fb7185",
+    shadow: "#b91c1c",
+    fact: "MARS IS CALLED THE RED PLANET.",
+    fuelPerHit: 20,
+    maxOperand: 8,
+  },
+  {
+    name: "JUPITER",
+    color: "#fdba74",
+    shadow: "#c2410c",
+    fact: "JUPITER IS THE BIGGEST PLANET IN OUR SOLAR SYSTEM.",
+    fuelPerHit: 20,
+    maxOperand: 9,
+  },
+  {
+    name: "SATURN",
+    color: "#fde68a",
+    shadow: "#b45309",
+    fact: "SATURN IS FAMOUS FOR ITS BIG RINGS.",
+    fuelPerHit: 20,
+    maxOperand: 10,
+    allowSubtraction: true,
+  },
+  {
+    name: "URANUS",
+    color: "#67e8f9",
+    shadow: "#0891b2",
+    fact: "URANUS SPINS LIKE IT IS ROLLING ON ITS SIDE.",
+    fuelPerHit: 17,
+    maxOperand: 10,
+    allowSubtraction: true,
+  },
+  {
+    name: "NEPTUNE",
+    color: "#818cf8",
+    shadow: "#4338ca",
+    fact: "NEPTUNE IS A WINDY ICE GIANT FAR FROM THE SUN.",
+    fuelPerHit: 17,
+    maxOperand: 12,
+    allowSubtraction: true,
+  },
+];
 
 function randomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -40,19 +132,32 @@ function shuffle<T>(items: T[]) {
   return next;
 }
 
-function createQuestion(streak: number): Question {
-  const boosted = streak >= 5;
-  const maxOperand = boosted ? 12 : 5;
-  const minOperand = boosted ? 2 : 0;
-  const a = randomInt(minOperand, maxOperand);
-  const b = randomInt(minOperand, maxOperand);
-  const correct = a + b;
+function createQuestion(planetIndex: number): Question {
+  const planet = PLANETS[planetIndex];
+  const useSubtraction = Boolean(
+    planet.allowSubtraction && Math.random() > 0.55,
+  );
+  let a = randomInt(0, planet.maxOperand);
+  let b = randomInt(0, planet.maxOperand);
+  let correct = 0;
+  let operator: "+" | "-" = "+";
+
+  if (useSubtraction) {
+    if (b > a) {
+      [a, b] = [b, a];
+    }
+    correct = a - b;
+    operator = "-";
+  } else {
+    correct = a + b;
+  }
+
   const wrongAnswers = new Set<number>();
-
   while (wrongAnswers.size < 2) {
-    const offset = randomInt(1, boosted ? 5 : 3) * (Math.random() > 0.5 ? 1 : -1);
-    const guess = Math.max(0, correct + offset);
-
+    const guess = Math.max(
+      0,
+      correct + randomInt(1, 4) * (Math.random() > 0.5 ? 1 : -1),
+    );
     if (guess !== correct) {
       wrongAnswers.add(guess);
     }
@@ -62,6 +167,7 @@ function createQuestion(streak: number): Question {
     a,
     b,
     correct,
+    operator,
     choices: shuffle([correct, ...wrongAnswers]),
   };
 }
@@ -70,29 +176,29 @@ function createInitialTargets(): TargetState[] {
   return [
     {
       x: 24,
-      y: 44,
+      y: 48,
       direction: 1,
       speed: 180,
-      drift: 0.35,
-      size: 102,
+      drift: 0.36,
+      size: 108,
       hue: TARGET_COLORS[0],
     },
     {
-      x: 230,
-      y: 170,
+      x: 240,
+      y: 176,
       direction: -1,
-      speed: 225,
-      drift: 0.42,
-      size: 108,
+      speed: 220,
+      drift: 0.44,
+      size: 112,
       hue: TARGET_COLORS[1],
     },
     {
       x: 520,
-      y: 298,
+      y: 304,
       direction: 1,
-      speed: 205,
-      drift: 0.3,
-      size: 98,
+      speed: 200,
+      drift: 0.32,
+      size: 104,
       hue: TARGET_COLORS[2],
     },
   ];
@@ -100,7 +206,9 @@ function createInitialTargets(): TargetState[] {
 
 export function NumberBlastGame() {
   const [phase, setPhase] = useState<Phase>("ready");
+  const [planetIndex, setPlanetIndex] = useState(0);
   const [score, setScore] = useState(0);
+  const [fuel, setFuel] = useState(0);
   const [streak, setStreak] = useState(0);
   const [misses, setMisses] = useState(0);
   const [question, setQuestion] = useState<Question | null>(null);
@@ -111,13 +219,16 @@ export function NumberBlastGame() {
   const [isFlashing, setIsFlashing] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [cosmoMood, setCosmoMood] = useState<CosmoMood>("idle");
-  const [speech, setSpeech] = useState("COSMO IS READY TO BLAST SOME NUMBERS!");
-  const [streakBurst, setStreakBurst] = useState<string | null>(null);
-  const [pointBurst, setPointBurst] = useState<string | null>(null);
+  const [speech, setSpeech] = useState("COSMO IS READY FOR A SPACE TRIP!");
+  const [burst, setBurst] = useState<string | null>(null);
+  const [startBurst, setStartBurst] = useState<"READY" | "GO" | null>(null);
+  const [soundOn, setSoundOn] = useState(true);
   const arenaRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
   const initFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
+
+  const planet = PLANETS[planetIndex];
 
   useEffect(() => {
     initFrameRef.current = window.requestAnimationFrame(() => {
@@ -135,27 +246,20 @@ export function NumberBlastGame() {
 
   useEffect(() => {
     const element = arenaRef.current;
-
-    if (!element) {
-      return;
-    }
+    if (!element) return;
 
     const measure = () => {
       setArenaWidth(Math.max(element.clientWidth - 120, 220));
     };
 
     measure();
-
     const resizeObserver = new ResizeObserver(measure);
     resizeObserver.observe(element);
-
     return () => resizeObserver.disconnect();
   }, []);
 
   useEffect(() => {
-    if (!isReady || phase !== "playing") {
-      return;
-    }
+    if (!isReady || phase !== "playing") return;
 
     const step = (time: number) => {
       if (lastTimeRef.current == null) {
@@ -180,14 +284,9 @@ export function NumberBlastGame() {
             nextDirection = -1;
           }
 
-          nextY = Math.min(Math.max(nextY, 28), 320);
+          nextY = Math.min(Math.max(nextY, 32), 324);
 
-          return {
-            ...target,
-            x: nextX,
-            y: nextY,
-            direction: nextDirection,
-          };
+          return { ...target, x: nextX, y: nextY, direction: nextDirection };
         }),
       );
 
@@ -195,259 +294,266 @@ export function NumberBlastGame() {
     };
 
     frameRef.current = window.requestAnimationFrame(step);
-
     return () => {
       if (frameRef.current != null) {
         window.cancelAnimationFrame(frameRef.current);
       }
-
       lastTimeRef.current = null;
     };
   }, [arenaWidth, isReady, phase]);
 
   useEffect(() => {
-    if (wrongChoice == null) {
-      return;
-    }
-
+    if (wrongChoice == null) return;
     const timeout = window.setTimeout(() => {
       setWrongChoice(null);
       setIsFlashing(false);
       setCosmoMood("idle");
-      setSpeech("TRY AGAIN! COSMO KNOWS YOU CAN GET IT!");
-    }, 460);
-
+      setSpeech("GOOD TRY! KEEP POWERING THE ROCKET!");
+    }, 480);
     return () => window.clearTimeout(timeout);
   }, [wrongChoice]);
 
   useEffect(() => {
-    if (correctChoice == null) {
-      return;
-    }
-
+    if (correctChoice == null) return;
     const timeout = window.setTimeout(() => {
       setCorrectChoice(null);
       setCosmoMood("idle");
     }, 420);
-
     return () => window.clearTimeout(timeout);
   }, [correctChoice]);
 
   useEffect(() => {
-    if (!pointBurst) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setPointBurst(null);
-    }, 520);
-
+    if (!burst) return;
+    const timeout = window.setTimeout(() => setBurst(null), 1300);
     return () => window.clearTimeout(timeout);
-  }, [pointBurst]);
+  }, [burst]);
 
   useEffect(() => {
-    if (!streakBurst) {
+    if (phase !== "countdown") return;
+
+    const readyTimeout = window.setTimeout(() => {
+      setStartBurst("GO");
+      setSpeech(`BLAST OFF TO ${planet.name}!`);
+      setCosmoMood("celebrate");
+    }, 650);
+
+    const goTimeout = window.setTimeout(() => {
+      setStartBurst(null);
+      setPhase("playing");
+      setSpeech(`POWER THE ROCKET TO ${planet.name}!`);
+      setCosmoMood("idle");
+    }, 1350);
+
+    return () => {
+      window.clearTimeout(readyTimeout);
+      window.clearTimeout(goTimeout);
+    };
+  }, [phase, planet.name]);
+
+  const fuelLabel = useMemo(() => `${Math.min(fuel, 100)}%`, [fuel]);
+
+  function startAdventure() {
+    setStartBurst("READY");
+    setSpeech(`READY FOR ${planet.name}!`);
+    setPhase("countdown");
+  }
+
+  function advancePlanet() {
+    const nextIndex = planetIndex + 1;
+    if (nextIndex >= PLANETS.length) {
+      setPhase("game-complete");
+      setSpeech("YOU HELPED COSMO VISIT EVERY PLANET!");
       return;
     }
 
-    const timeout = window.setTimeout(() => {
-      setStreakBurst(null);
-    }, 1500);
-
-    return () => window.clearTimeout(timeout);
-  }, [streakBurst]);
-
-  const difficultyLabel = useMemo(
-    () => (streak >= 5 ? "BOOSTED" : "WARM-UP"),
-    [streak],
-  );
-
-  function startRound() {
-    setPhase("playing");
-    setSpeech("AALIYAH, TAP THE RIGHT NUMBER!");
-    setCosmoMood("idle");
+    setPlanetIndex(nextIndex);
+    setFuel(0);
+    setStreak(0);
+    setQuestion(createQuestion(nextIndex));
+    setSpeech(`NEXT STOP: ${PLANETS[nextIndex].name}!`);
+    setPhase("countdown");
+    setStartBurst("READY");
   }
 
   function handleChoice(value: number) {
-    if (!question || phase !== "playing") {
-      return;
-    }
+    if (!question || phase !== "playing") return;
 
     if (value === question.correct) {
+      const nextFuel = Math.min(100, fuel + planet.fuelPerHit);
       const nextStreak = streak + 1;
-      setScore((current) => current + 1);
+
+      setScore((current) => current + 10);
+      setFuel(nextFuel);
       setStreak(nextStreak);
       setCorrectChoice(value);
       setCosmoMood("celebrate");
-      setPointBurst("+10!");
 
       if (nextStreak > 0 && nextStreak % 5 === 0) {
-        setStreakBurst(`STREAK x${nextStreak}!`);
-        setSpeech("WOW! COSMO'S THRUSTERS ARE GLOWING!");
+        setBurst("STREAK!");
+        setSpeech("WOW! COSMO'S ROCKET IS GLOWING!");
       } else {
-        setSpeech(nextStreak >= 3 ? "YOU'RE BLASTING THROUGH THESE!" : "NICE SHOT!");
+        setBurst(`+${planet.fuelPerHit}%`);
+        setSpeech("NICE! MORE ROCKET FUEL!");
       }
 
-      setQuestion(createQuestion(nextStreak));
+      if (nextFuel >= 100) {
+        setPhase("planet-complete");
+        setSpeech(`${planet.name} COMPLETE!`);
+        return;
+      }
+
+      setQuestion(createQuestion(planetIndex));
       return;
     }
 
     setMisses((current) => current + 1);
-    setStreak(0);
     setWrongChoice(value);
     setIsFlashing(true);
     setCosmoMood("surprised");
-    setSpeech("WHOOPS! THAT ONE ZIPPED PAST US!");
+    setSpeech("OOPS! TRY ANOTHER NUMBER BUBBLE!");
   }
 
   return (
     <div className="flex flex-col gap-5">
-      <section className="hard-border rounded-[28px] bg-white p-4 shadow-[5px_5px_0_var(--color-gameroom-navy)] sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="mb-2 text-[11px] tracking-[0.18em] text-gameroom-orange">
-              COSMO&apos;S NUMBER BLAST ARENA
-            </p>
-            <h1 className="text-4xl leading-[0.9] text-gameroom-navy sm:text-5xl">
-              NUMBER BLAST
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-3">
+      <MissionHeader
+        eyebrow="COSMO'S SOLAR SYSTEM TRIP"
+        title="NUMBER BLAST"
+        rightSlot={
+          <>
+            <button
+              type="button"
+              onClick={() => setSoundOn((current) => !current)}
+              className="rounded-full border-[3px] border-gameroom-navy bg-white px-4 py-3 text-xs leading-none text-gameroom-navy shadow-[3px_3px_0_var(--color-gameroom-navy)]"
+            >
+              SOUND {soundOn ? "ON" : "OFF"}
+            </button>
             <div className="rounded-full border-[3px] border-gameroom-navy bg-gameroom-yellow px-4 py-3 text-sm leading-none text-gameroom-navy shadow-[3px_3px_0_var(--color-gameroom-navy)]">
               SCORE {score}
             </div>
-          </div>
-        </div>
+          </>
+        }
+        stats={[
+          { label: "PLANET", value: `${planetIndex + 1} / ${PLANETS.length}` },
+          { label: "FUEL", value: fuelLabel },
+          { label: "MISSES", value: String(misses) },
+        ]}
+      />
 
-        <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-          <div className="rounded-[20px] border-[3px] border-gameroom-navy bg-gameroom-cream px-3 py-3 text-xs text-gameroom-navy">
-            STREAK {streak}
-          </div>
-          <div className="rounded-[20px] border-[3px] border-gameroom-navy bg-gameroom-cream px-3 py-3 text-xs text-gameroom-navy">
-            MODE {difficultyLabel}
-          </div>
-          <div className="rounded-[20px] border-[3px] border-gameroom-navy bg-gameroom-cream px-3 py-3 text-xs text-gameroom-navy">
-            MISSES {misses}
-          </div>
-        </div>
-      </section>
-
-      <section
-        className={[
-          "hard-border relative overflow-hidden rounded-[32px] bg-gameroom-number p-4 shadow-[5px_5px_0_var(--color-gameroom-number-shadow)] transition-transform sm:p-5",
-          isFlashing ? "animate-[arena-shake_0.32s_linear] bg-[#fda4af]" : "",
-        ].join(" ")}
-      >
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="mb-2 text-[11px] tracking-[0.16em] text-gameroom-navy">
-              SPACE ARCADE MISSION
-            </p>
-            <div className="inline-flex rounded-[24px] border-[3px] border-gameroom-navy bg-white px-6 py-3 text-4xl leading-none text-gameroom-navy shadow-[4px_4px_0_var(--color-gameroom-navy)] sm:text-5xl">
-              {question ? `${question.a} + ${question.b}` : "0 + 0"}
+      <div className={isFlashing ? "animate-[arena-shake_0.32s_linear]" : ""}>
+        <MissionArena
+          title={planet.name}
+          progressLabel="ROCKET FUEL"
+          progressValue={fuelLabel}
+          progressPercent={Math.min(fuel, 100)}
+          badge="POWER THE ROCKET"
+          topRight={
+            <div className="rounded-full border-[3px] border-gameroom-navy bg-white px-4 py-2 text-[10px] text-gameroom-navy shadow-[3px_3px_0_var(--color-gameroom-navy)]">
+              {soundOn ? "SOUND READY" : "SOUND OFF"}
             </div>
-          </div>
-
-          <p className="max-w-xs text-right text-[11px] leading-[1.15] text-gameroom-navy">
-            HELP COSMO CATCH THE RIGHT NUMBER BUBBLE BEFORE IT ZOOMS AWAY!
-          </p>
-        </div>
-
-        <div
-          ref={arenaRef}
-          className="relative min-h-[470px] overflow-hidden rounded-[28px] border-[3px] border-gameroom-navy bg-[#173d84] p-3 shadow-[inset_0_0_0_3px_rgba(255,255,255,0.08)]"
+          }
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.45),transparent_12%),radial-gradient(circle_at_70%_28%,rgba(255,255,255,0.2),transparent_14%),radial-gradient(circle_at_82%_76%,rgba(255,255,255,0.16),transparent_12%),linear-gradient(180deg,#2255a4_0%,#173d84_45%,#132d63_100%)]" />
           <div className="pointer-events-none absolute inset-0 opacity-80">
             <div className="absolute left-[6%] top-[10%] h-2 w-2 rounded-full bg-white shadow-[120px_20px_0_0_#fff,260px_50px_0_0_#fff,420px_12px_0_0_#fff,540px_80px_0_0_#fff,650px_30px_0_0_#fff,760px_110px_0_0_#fff,820px_40px_0_0_#fff]" />
-            <div className="absolute right-[12%] top-[12%] h-16 w-16 rounded-full border-[3px] border-gameroom-navy bg-[#fcd34d]" />
-            <div className="absolute bottom-[18%] right-[8%] h-24 w-24 rounded-full border-[3px] border-gameroom-navy bg-[#fda4af]" />
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-[repeating-linear-gradient(90deg,rgba(255,228,77,0.26)_0_28px,transparent_28px_56px)]" />
+            <div
+              className="absolute right-[10%] top-[10%] h-28 w-28 rounded-full border-[3px] border-gameroom-navy"
+              style={{ backgroundColor: planet.color, boxShadow: `6px 6px 0 ${planet.shadow}` }}
+            />
           </div>
 
           <div className="relative grid min-h-[444px] grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-            <aside className="hard-border relative rounded-[28px] bg-gameroom-cream p-4 shadow-[5px_5px_0_var(--color-gameroom-navy)]">
-              <div className="mb-3 rounded-[20px] border-[3px] border-gameroom-navy bg-white px-3 py-2 text-center text-[10px] leading-[1.2] text-gameroom-navy">
-                {speech}
+            <CharacterPanel
+              speech={speech}
+              mood={cosmoMood}
+              name="COSMO"
+              footer="ROCKET READY"
+              accent="#7dd3fc"
+            >
+              <div className="mt-5 flex items-center gap-2">
+                <div className="h-10 w-16 rounded-l-[20px] rounded-r-[12px] border-[3px] border-gameroom-navy bg-gameroom-orange" />
+                <div className="h-5 w-8 rounded-full border-[3px] border-gameroom-navy bg-gameroom-yellow" />
               </div>
-
-              <div className="flex min-h-[290px] flex-col items-center justify-center">
-                <div
-                  className={[
-                    "relative flex h-36 w-28 items-center justify-center rounded-[999px] border-[3px] border-gameroom-navy bg-[#7dd3fc] text-center shadow-[5px_5px_0_var(--color-gameroom-navy)]",
-                    cosmoMood === "idle" ? "animate-[cosmo-bounce_1.8s_ease-in-out_infinite]" : "",
-                    cosmoMood === "celebrate" ? "animate-[cosmo-celebrate_0.55s_ease-in-out]" : "",
-                    cosmoMood === "surprised" ? "animate-[cosmo-surprised_0.35s_linear]" : "",
-                  ].join(" ")}
-                >
-                  <div className="absolute -top-3 left-1/2 h-12 w-12 -translate-x-1/2 rounded-full border-[3px] border-gameroom-navy bg-gameroom-yellow" />
-                  <div className="absolute top-8 flex w-full justify-center gap-4">
-                    <span className="h-3 w-3 rounded-full bg-gameroom-navy" />
-                    <span className="h-3 w-3 rounded-full bg-gameroom-navy" />
-                  </div>
-                  <div className="absolute top-[58px] h-3 w-10 rounded-full border-[3px] border-gameroom-navy bg-white" />
-                  <div className="absolute bottom-6 flex gap-2">
-                    <span className="h-8 w-3 rounded-full border-[3px] border-gameroom-navy bg-gameroom-orange" />
-                    <span className="h-8 w-3 rounded-full border-[3px] border-gameroom-navy bg-gameroom-orange" />
-                  </div>
-                  <span className="mt-14 block max-w-[72px] text-[11px] leading-[1.05] text-gameroom-navy">
-                    COSMO
-                  </span>
-                </div>
-              </div>
-
-              <div className="rounded-[20px] border-[3px] border-gameroom-navy bg-gameroom-yellow px-3 py-3 text-center text-[11px] leading-[1.15] text-gameroom-navy">
-                {phase === "ready"
-                  ? "READY FOR LAUNCH!"
-                  : streak >= 5
-                    ? "THRUSTERS BOOSTED!"
-                    : "KEEP BLASTING!"}
-              </div>
-            </aside>
+            </CharacterPanel>
 
             <div className="relative overflow-hidden rounded-[28px] border-[3px] border-gameroom-navy bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]">
-              <div className="pointer-events-none absolute left-4 top-4 rounded-full border-[3px] border-gameroom-navy bg-gameroom-yellow px-4 py-2 text-[10px] text-gameroom-navy shadow-[3px_3px_0_var(--color-gameroom-navy)]">
-                TAP THE RIGHT NUMBER
-              </div>
+              {(phase === "ready" || phase === "countdown") && (
+                <MissionOverlay
+                  eyebrow="SPACE ADVENTURE"
+                  title="COSMO NEEDS YOUR HELP!"
+                  body="ANSWER MATH QUESTIONS TO FLY FROM PLANET TO PLANET."
+                  action={
+                    phase === "ready" ? (
+                      <button
+                        type="button"
+                        onClick={startAdventure}
+                        disabled={!question}
+                        className="mt-5 inline-flex min-w-[200px] items-center justify-center rounded-full border-[3px] border-gameroom-navy bg-gameroom-orange px-6 py-4 text-xl leading-none text-gameroom-navy shadow-[5px_5px_0_var(--color-gameroom-navy)]"
+                      >
+                        START
+                      </button>
+                    ) : undefined
+                  }
+                />
+              )}
 
-              {phase === "ready" ? (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-[rgba(26,10,46,0.22)] p-5">
-                  <div className="hard-border max-w-md rounded-[30px] bg-white p-6 text-center shadow-[7px_7px_0_var(--color-gameroom-navy)]">
-                    <p className="mb-2 text-[11px] tracking-[0.18em] text-gameroom-orange">
-                      LAUNCH BAY
-                    </p>
-                    <h2 className="text-4xl leading-[0.92] text-gameroom-navy">
-                      COSMO NEEDS YOUR HELP!
-                    </h2>
-                    <p className="mt-3 text-sm leading-[1.2] text-gameroom-navy">
-                      TAP THE RIGHT NUMBER!
-                    </p>
-                    <button
-                      type="button"
-                      onClick={startRound}
-                      disabled={!question}
-                      className="mt-5 inline-flex min-w-[180px] items-center justify-center rounded-full border-[3px] border-gameroom-navy bg-gameroom-orange px-6 py-4 text-xl leading-none text-gameroom-navy shadow-[5px_5px_0_var(--color-gameroom-navy)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-70"
-                    >
-                      START
-                    </button>
+              {phase === "countdown" && startBurst ? (
+                <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-[rgba(26,10,46,0.14)]">
+                  <div
+                    className={[
+                      "rounded-full border-[4px] border-gameroom-navy px-10 py-6 text-5xl leading-none shadow-[8px_8px_0_var(--color-gameroom-navy)] sm:text-7xl",
+                      startBurst === "READY"
+                        ? "animate-[ready-go-pop_0.7s_ease-out] bg-white text-gameroom-orange"
+                        : "animate-[go-flash_0.65s_ease-out] bg-gameroom-yellow text-gameroom-navy",
+                    ].join(" ")}
+                  >
+                    {startBurst}
                   </div>
                 </div>
               ) : null}
 
-              {streakBurst ? (
-                <div className="pointer-events-none absolute left-1/2 top-5 z-20 -translate-x-1/2 animate-[streak-pop_1.25s_ease-out] rounded-full border-[3px] border-gameroom-navy bg-gameroom-yellow px-5 py-3 text-sm leading-none text-gameroom-navy shadow-[5px_5px_0_var(--color-gameroom-navy)]">
-                  {streakBurst}
-                </div>
-              ) : null}
+              {phase === "planet-complete" && (
+                <MissionOverlay
+                  eyebrow="PLANET COMPLETE"
+                  title={planet.name}
+                  body={planet.fact}
+                  media={
+                    <div
+                      className="mx-auto mb-4 h-24 w-24 rounded-full border-[3px] border-gameroom-navy"
+                      style={{
+                        backgroundColor: planet.color,
+                        boxShadow: `6px 6px 0 ${planet.shadow}`,
+                      }}
+                    />
+                  }
+                  action={
+                    <button
+                      type="button"
+                      onClick={advancePlanet}
+                      className="mt-5 inline-flex min-w-[200px] items-center justify-center rounded-full border-[3px] border-gameroom-navy bg-gameroom-orange px-6 py-4 text-xl leading-none text-gameroom-navy shadow-[5px_5px_0_var(--color-gameroom-navy)]"
+                    >
+                      {planetIndex === PLANETS.length - 1 ? "FINISH" : "NEXT PLANET"}
+                    </button>
+                  }
+                />
+              )}
 
-              {pointBurst ? (
-                <div className="pointer-events-none absolute right-6 top-16 z-20 animate-[point-burst_0.5s_ease-out] rounded-full border-[3px] border-gameroom-navy bg-white px-3 py-2 text-xs leading-none text-gameroom-orange shadow-[4px_4px_0_var(--color-gameroom-navy)]">
-                  {pointBurst}
-                </div>
-              ) : null}
+              {phase === "game-complete" && (
+                <MissionOverlay
+                  eyebrow="MISSION COMPLETE"
+                  title="SOLAR SYSTEM COMPLETE!"
+                  body="COSMO MADE IT FROM MERCURY TO NEPTUNE THANKS TO YOU!"
+                />
+              )}
 
-              <div className="relative h-[444px]">
+              {burst ? <BurstBadge text={burst} /> : null}
+
+              <div className="mb-3 mt-16 px-4">
+                <div className="inline-flex rounded-[24px] border-[3px] border-gameroom-navy bg-white px-6 py-3 text-4xl leading-none text-gameroom-navy shadow-[4px_4px_0_var(--color-gameroom-navy)] sm:text-5xl">
+                  {question ? `${question.a} ${question.operator} ${question.b}` : "0 + 0"}
+                </div>
+              </div>
+
+              <div className="relative h-[340px]">
                 {(question?.choices ?? [0, 0, 0]).map((choice, index) => {
                   const target = targets[index];
                   const isWrong = wrongChoice === choice;
@@ -463,31 +569,35 @@ export function NumberBlastGame() {
                       onClick={() => handleChoice(choice)}
                       disabled={!question || phase !== "playing"}
                       className={[
-                        "absolute z-10 flex items-center justify-center rounded-full border-[3px] border-gameroom-navy text-3xl leading-none text-gameroom-navy shadow-[5px_5px_0_var(--color-gameroom-navy)] transition-transform active:scale-95 sm:text-4xl",
-                        phase === "playing" ? "hover:-translate-y-1" : "",
+                        "absolute z-10 flex select-none items-center justify-center rounded-full border-[3px] border-gameroom-navy text-4xl leading-none text-gameroom-navy shadow-[5px_5px_0_var(--color-gameroom-navy)] transition-transform active:scale-95 sm:text-5xl",
                         !question || phase !== "playing"
                           ? "pointer-events-none opacity-80"
                           : "",
-                        isWrong ? "bg-[#fb7185] animate-[wrong-flash_0.35s_ease]" : "",
-                        isCorrect ? "animate-[correct-pop_0.35s_ease]" : "",
+                        isWrong ? "bg-[#fb7185] animate-[wrong-flash_0.42s_ease] ring-4 ring-white/60" : "",
+                        isCorrect ? "animate-[correct-pop_0.48s_ease] ring-4 ring-white/70" : "",
                       ].join(" ")}
                       style={{
                         transform: `translate(${x}px, ${y}px)`,
-                        width: `${size}px`,
-                        height: `${size}px`,
+                        width: `${size + 18}px`,
+                        height: `${size + 18}px`,
                         backgroundColor: isWrong ? "#fb7185" : target?.hue ?? "#ffe44d",
+                        WebkitTapHighlightColor: "transparent",
+                        touchAction: "manipulation",
                       }}
                     >
                       <span className="absolute inset-[10px] rounded-full border-2 border-[rgba(255,255,255,0.65)]" />
-                      <span className="relative z-10">{choice}</span>
+                      <span className="absolute inset-[20px] rounded-full border border-[rgba(26,10,46,0.16)]" />
+                      <span className="relative z-10 drop-shadow-[0_2px_0_rgba(255,255,255,0.55)]">
+                        {choice}
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </MissionArena>
+      </div>
     </div>
   );
 }

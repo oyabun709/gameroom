@@ -156,7 +156,7 @@ button {
     transform: scale(1);
   }
   45% {
-    transform: scale(1.16);
+    transform: scale(1.22);
   }
   100% {
     transform: scale(1);
@@ -190,5 +190,35 @@ button {
   100% {
     opacity: 0;
     transform: translateX(-50%) translateY(4px) scale(1);
+  }
+}
+
+@keyframes ready-go-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) rotate(-4deg);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.08) rotate(0deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes go-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.14);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
