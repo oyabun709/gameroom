@@ -87,7 +87,7 @@ export default async function GamePage({ params }: GamePageProps) {
           <div className="hard-border rounded-[24px] bg-white p-4 shadow-[5px_5px_0_var(--color-gameroom-navy)]">
             <p className="mb-2 text-[11px] text-gameroom-orange">STATUS</p>
             <p className="text-sm leading-[1.15] text-gameroom-navy">
-              FRONTEND SHELL READY. GAMEPLAY COMING NEXT.
+              COMING SOON
             </p>
           </div>
         </section>

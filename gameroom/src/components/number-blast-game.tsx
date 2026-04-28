@@ -20,6 +20,7 @@ type Question = {
 type TargetState = {
   x: number;
   y: number;
+  baseY: number;
   direction: 1 | -1;
   speed: number;
   drift: number;
@@ -46,6 +47,7 @@ type Planet = {
 };
 
 const MIN_X = 0;
+const ARENA_HEIGHT = 340;
 const TARGET_COLORS = ["#ffe44d", "#7dd3fc", "#fcd34d"];
 const PLANETS: Planet[] = [
   {
@@ -176,28 +178,31 @@ function createInitialTargets(): TargetState[] {
   return [
     {
       x: 24,
-      y: 48,
+      y: 20,
+      baseY: 20,
       direction: 1,
       speed: 180,
-      drift: 0.36,
+      drift: 10,
       size: 108,
       hue: TARGET_COLORS[0],
     },
     {
       x: 240,
-      y: 176,
+      y: 90,
+      baseY: 90,
       direction: -1,
       speed: 220,
-      drift: 0.44,
+      drift: 12,
       size: 112,
       hue: TARGET_COLORS[1],
     },
     {
-      x: 520,
-      y: 304,
+      x: 120,
+      y: 160,
+      baseY: 160,
       direction: 1,
       speed: 200,
-      drift: 0.32,
+      drift: 10,
       size: 104,
       hue: TARGET_COLORS[2],
     },
@@ -211,45 +216,28 @@ export function NumberBlastGame() {
   const [fuel, setFuel] = useState(0);
   const [streak, setStreak] = useState(0);
   const [misses, setMisses] = useState(0);
-  const [question, setQuestion] = useState<Question | null>(null);
-  const [targets, setTargets] = useState<TargetState[]>([]);
+  const [question, setQuestion] = useState<Question>(() => createQuestion(0));
+  const [targets, setTargets] = useState<TargetState[]>(() => createInitialTargets());
   const [arenaWidth, setArenaWidth] = useState(920);
   const [wrongChoice, setWrongChoice] = useState<number | null>(null);
   const [correctChoice, setCorrectChoice] = useState<number | null>(null);
   const [isFlashing, setIsFlashing] = useState(false);
-  const [isReady, setIsReady] = useState(false);
   const [cosmoMood, setCosmoMood] = useState<CosmoMood>("idle");
   const [speech, setSpeech] = useState("COSMO IS READY FOR A SPACE TRIP!");
   const [burst, setBurst] = useState<string | null>(null);
   const [startBurst, setStartBurst] = useState<"READY" | "GO" | null>(null);
-  const [soundOn, setSoundOn] = useState(true);
   const arenaRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
-  const initFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
 
   const planet = PLANETS[planetIndex];
-
-  useEffect(() => {
-    initFrameRef.current = window.requestAnimationFrame(() => {
-      setQuestion(createQuestion(0));
-      setTargets(createInitialTargets());
-      setIsReady(true);
-    });
-
-    return () => {
-      if (initFrameRef.current != null) {
-        window.cancelAnimationFrame(initFrameRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     const element = arenaRef.current;
     if (!element) return;
 
     const measure = () => {
-      setArenaWidth(Math.max(element.clientWidth - 120, 220));
+      setArenaWidth(Math.max(element.clientWidth, 220));
     };
 
     measure();
@@ -259,7 +247,7 @@ export function NumberBlastGame() {
   }, []);
 
   useEffect(() => {
-    if (!isReady || phase !== "playing") return;
+    if (phase !== "playing") return;
 
     const step = (time: number) => {
       if (lastTimeRef.current == null) {
@@ -271,10 +259,15 @@ export function NumberBlastGame() {
 
       setTargets((current) =>
         current.map((target, index) => {
-          const maxX = Math.max(arenaWidth - target.size, 220);
+          const buttonSize = target.size + 18;
+          const maxX = Math.max(arenaWidth - buttonSize, 0);
+          const maxY = ARENA_HEIGHT - buttonSize;
           let nextX = target.x + target.speed * target.direction * delta;
           let nextDirection = target.direction;
-          let nextY = target.y + Math.sin(time / 350 + index) * target.drift;
+          const nextY = Math.min(
+            Math.max(target.baseY + Math.sin(time / 800 + index * 2.1) * target.drift, 0),
+            maxY,
+          );
 
           if (nextX <= MIN_X) {
             nextX = MIN_X;
@@ -283,8 +276,6 @@ export function NumberBlastGame() {
             nextX = maxX;
             nextDirection = -1;
           }
-
-          nextY = Math.min(Math.max(nextY, 32), 324);
 
           return { ...target, x: nextX, y: nextY, direction: nextDirection };
         }),
@@ -300,7 +291,7 @@ export function NumberBlastGame() {
       }
       lastTimeRef.current = null;
     };
-  }, [arenaWidth, isReady, phase]);
+  }, [arenaWidth, phase]);
 
   useEffect(() => {
     if (wrongChoice == null) return;
@@ -376,7 +367,7 @@ export function NumberBlastGame() {
   }
 
   function handleChoice(value: number) {
-    if (!question || phase !== "playing") return;
+    if (phase !== "playing") return;
 
     if (value === question.correct) {
       const nextFuel = Math.min(100, fuel + planet.fuelPerHit);
@@ -419,18 +410,9 @@ export function NumberBlastGame() {
         eyebrow="COSMO'S SOLAR SYSTEM TRIP"
         title="NUMBER BLAST"
         rightSlot={
-          <>
-            <button
-              type="button"
-              onClick={() => setSoundOn((current) => !current)}
-              className="rounded-full border-[3px] border-gameroom-navy bg-white px-4 py-3 text-xs leading-none text-gameroom-navy shadow-[3px_3px_0_var(--color-gameroom-navy)]"
-            >
-              SOUND {soundOn ? "ON" : "OFF"}
-            </button>
-            <div className="rounded-full border-[3px] border-gameroom-navy bg-gameroom-yellow px-4 py-3 text-sm leading-none text-gameroom-navy shadow-[3px_3px_0_var(--color-gameroom-navy)]">
-              SCORE {score}
-            </div>
-          </>
+          <div className="rounded-full border-[3px] border-gameroom-navy bg-gameroom-yellow px-4 py-3 text-sm leading-none text-gameroom-navy shadow-[3px_3px_0_var(--color-gameroom-navy)]">
+            SCORE {score}
+          </div>
         }
         stats={[
           { label: "PLANET", value: `${planetIndex + 1} / ${PLANETS.length}` },
@@ -446,11 +428,7 @@ export function NumberBlastGame() {
           progressValue={fuelLabel}
           progressPercent={Math.min(fuel, 100)}
           badge="POWER THE ROCKET"
-          topRight={
-            <div className="rounded-full border-[3px] border-gameroom-navy bg-white px-4 py-2 text-[10px] text-gameroom-navy shadow-[3px_3px_0_var(--color-gameroom-navy)]">
-              {soundOn ? "SOUND READY" : "SOUND OFF"}
-            </div>
-          }
+          topRight={undefined}
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.45),transparent_12%),radial-gradient(circle_at_70%_28%,rgba(255,255,255,0.2),transparent_14%),radial-gradient(circle_at_82%_76%,rgba(255,255,255,0.16),transparent_12%),linear-gradient(180deg,#2255a4_0%,#173d84_45%,#132d63_100%)]" />
           <div className="pointer-events-none absolute inset-0 opacity-80">
@@ -486,7 +464,6 @@ export function NumberBlastGame() {
                       <button
                         type="button"
                         onClick={startAdventure}
-                        disabled={!question}
                         className="mt-5 inline-flex min-w-[200px] items-center justify-center rounded-full border-[3px] border-gameroom-navy bg-gameroom-orange px-6 py-4 text-xl leading-none text-gameroom-navy shadow-[5px_5px_0_var(--color-gameroom-navy)]"
                       >
                         START
@@ -549,12 +526,12 @@ export function NumberBlastGame() {
 
               <div className="mb-3 mt-16 px-4">
                 <div className="inline-flex rounded-[24px] border-[3px] border-gameroom-navy bg-white px-6 py-3 text-4xl leading-none text-gameroom-navy shadow-[4px_4px_0_var(--color-gameroom-navy)] sm:text-5xl">
-                  {question ? `${question.a} ${question.operator} ${question.b}` : "0 + 0"}
+                  {`${question.a} ${question.operator} ${question.b}`}
                 </div>
               </div>
 
-              <div className="relative h-[340px]">
-                {(question?.choices ?? [0, 0, 0]).map((choice, index) => {
+              <div ref={arenaRef} className="relative h-[340px]">
+                {question.choices.map((choice, index) => {
                   const target = targets[index];
                   const isWrong = wrongChoice === choice;
                   const isCorrect = correctChoice === choice;
@@ -564,13 +541,13 @@ export function NumberBlastGame() {
 
                   return (
                     <button
-                      key={`${question?.correct ?? "loading"}-${choice}-${index}`}
+                      key={`${question.correct}-${choice}-${index}`}
                       type="button"
                       onClick={() => handleChoice(choice)}
-                      disabled={!question || phase !== "playing"}
+                      disabled={phase !== "playing"}
                       className={[
                         "absolute z-10 flex select-none items-center justify-center rounded-full border-[3px] border-gameroom-navy text-4xl leading-none text-gameroom-navy shadow-[5px_5px_0_var(--color-gameroom-navy)] transition-transform active:scale-95 sm:text-5xl",
-                        !question || phase !== "playing"
+                        phase !== "playing"
                           ? "pointer-events-none opacity-80"
                           : "",
                         isWrong ? "bg-[#fb7185] animate-[wrong-flash_0.42s_ease] ring-4 ring-white/60" : "",

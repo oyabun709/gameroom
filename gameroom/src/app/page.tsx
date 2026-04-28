@@ -13,15 +13,10 @@ export default function HomePage() {
       <header className="header-stripes bg-gameroom-orange px-4 py-4 sm:px-6 sm:py-5">
         <div className="flex items-start justify-between gap-4">
           <Wordmark />
-          <div className="flex items-center gap-3">
-            <div className="hard-border rounded-full bg-gameroom-yellow px-4 py-2 text-base leading-none text-gameroom-navy shadow-[3px_3px_0_var(--color-gameroom-navy)] sm:text-lg">
-              240 PTS
-            </div>
-            <MascotPlaceholder
-              label="REMI"
-              className="h-16 w-16 bg-gameroom-yellow text-[11px] sm:h-20 sm:w-20"
-            />
-          </div>
+          <MascotPlaceholder
+            label="REMI"
+            className="h-16 w-16 bg-gameroom-yellow text-[11px] sm:h-20 sm:w-20"
+          />
         </div>
       </header>
 
@@ -41,7 +36,7 @@ export default function HomePage() {
               </p>
             </div>
             <MascotPlaceholder
-              label="HOST SLOT"
+              label="REMI"
               className="h-24 w-24 self-start bg-gameroom-cream text-xs sm:h-28 sm:w-28 md:self-center"
             />
           </div>
