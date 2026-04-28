@@ -11,8 +11,12 @@ export default function TrophiesPage() {
 
       <main className="screen-grid flex flex-1 items-center justify-center px-4 py-8 sm:px-6">
         <section className="hard-border w-full max-w-2xl rounded-[30px] bg-white p-8 text-center shadow-[5px_5px_0_var(--color-gameroom-navy)]">
-          <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center rounded-full border-[3px] border-gameroom-navy bg-gameroom-yellow text-5xl shadow-[4px_4px_0_var(--color-gameroom-navy)]">
-            🏆
+          <div className="mx-auto mb-5 h-24 w-24 rounded-full border-[3px] border-gameroom-navy bg-gameroom-yellow shadow-[4px_4px_0_var(--color-gameroom-navy)]">
+            <div className="flex h-full flex-col items-center justify-center gap-1">
+              <div className="h-8 w-12 rounded-t-full border-[2px] border-gameroom-navy bg-gameroom-orange" />
+              <div className="h-2 w-8 border-t-[2px] border-gameroom-navy" />
+              <div className="h-2 w-10 rounded-sm border-[2px] border-gameroom-navy bg-gameroom-orange" />
+            </div>
           </div>
           <h1 className="text-3xl leading-none text-gameroom-navy">TROPHIES</h1>
           <p className="soft-copy mx-auto mt-3 max-w-sm text-sm leading-[1.3]">

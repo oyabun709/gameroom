@@ -531,7 +531,7 @@ export function NumberBlastGame() {
               </div>
 
               <div ref={arenaRef} className="relative h-[340px]">
-                {question.choices.map((choice, index) => {
+                {phase === "playing" && question.choices.map((choice, index) => {
                   const target = targets[index];
                   const isWrong = wrongChoice === choice;
                   const isCorrect = correctChoice === choice;
